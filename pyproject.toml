@@ -1,0 +1,34 @@
+[tool.black]
+line-length = 79
+
+[tool.poetry]
+name = "daniel-jones-dev-aoc2021"
+version = "0.0.1"
+description = "Advent of Code 2021."
+authors = ["Daniel Jones <danielrjones1@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/daniel-jones-dev/aoc2021"
+include = [
+    "LICENSE",
+]
+
+[tool.poetry.urls]
+"Bug Tracker" = "https://github.com/daniel-jones-dev/aoc2021/issues"
+
+[tool.coverage.run]
+omit = [".*", "*/site-packages/*", "tests/*"]
+
+[tool.coverage.report]
+fail_under = 70
+
+[tool.poetry.dependencies]
+python = ">=3.6.2,<4"
+
+[tool.poetry.dev-dependencies]
+black = "^21.4b2"
+pytest = "^6.2.3"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
