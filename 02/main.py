@@ -1,5 +1,5 @@
 def main():
-    pos, depth = 0, 0
+    pos, depth, aim = 0, 0, 0
 
     with open("input.txt") as f:
         for line in f.readlines():
@@ -7,10 +7,11 @@ def main():
             num = int(num)
             if dir == "forward":
                 pos += num
+                depth += aim * num
             elif dir == "down":
-                depth += num
+                aim += num
             else:
-                depth -= num
+                aim -= num
     print(depth * pos)
 
 
