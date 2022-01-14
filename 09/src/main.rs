@@ -49,35 +49,28 @@ impl Map {
     }
 }
 
-
 fn is_low_point(height_map: &Map, coord: Coord) -> bool {
     let this_height = height_map.get(coord);
     let neighbours = height_map.neighbours(coord);
     return !neighbours.iter().any(|neighbour| height_map.get(*neighbour) <= this_height);
 }
 
-fn first_neighbour_basin(basin_map: &Map, coord: Coord, ignore: Option<u32>) -> u32 {
+fn count_basin(basin_map: &mut Map, coord: Coord) -> usize {
+    if basin_map.get(coord) == 0 {
+        return 0;
+    }
+
+    *basin_map.get_mut(coord) = 0;
+    let mut sum = 1;
     let neighbours = basin_map.neighbours(coord);
     for neighbour in neighbours {
-        let neighbour_basin = basin_map.get(neighbour);
-        if neighbour_basin != 0 && neighbour_basin != ignore.unwrap_or(0) { return neighbour_basin; }
+        sum += count_basin(basin_map, neighbour);
     }
-    return 0;
-}
-
-fn reassign_basin(basin_map: &mut Map, from: u32, to: u32) {
-    for r in 0..basin_map.rows() {
-        for c in 0..basin_map.cols() {
-            let coord = Coord(r, c);
-            if basin_map.get(coord) == from {
-                *basin_map.get_mut(coord) = to;
-            }
-        }
-    }
+    return sum;
 }
 
 fn main() {
-    let contents = fs::read_to_string("example.txt").unwrap();
+    let contents = fs::read_to_string("input.txt").unwrap();
 
     let cols = contents.lines().next().unwrap().len();
     let rows = contents.lines().count();
@@ -93,7 +86,6 @@ fn main() {
 
     let mut risk_level_sum = 0;
     let mut basin_map = new_map(rows, cols);
-    let mut max_basin = 0;
 
     for r in 0..rows {
         for c in 0..cols {
@@ -105,53 +97,24 @@ fn main() {
             }
 
             // Assign a basin to the cell
-            if this_height == 9 {
-                *basin_map.get_mut(coord) = 0;
-            } else {
-                let neighbour_basin = first_neighbour_basin(&basin_map, coord, None);
-                if neighbour_basin != 0 {
-                    *basin_map.get_mut(coord) = neighbour_basin;
-                } else {
-                    // Assign new basin
-                    max_basin += 1;
-                    *basin_map.get_mut(coord) = max_basin;
-                }
-            }
+            *basin_map.get_mut(coord) = if this_height == 9 { 0 } else { 1 };
         }
     }
     println!("{}", risk_level_sum); // part 1
 
-    // Reassign neighbouring basins
+
+    // Count basins
+    let mut top_counts = vec![0; 3];
     for r in 0..rows {
         for c in 0..cols {
             let coord = Coord(r, c);
-            let this_basin = basin_map.get(coord);
-            if this_basin != 0 {
-                let neighbour_basin = first_neighbour_basin(&basin_map, coord, Option::from(this_basin));
-                if neighbour_basin != 0 {
-                    reassign_basin(&mut basin_map, max(this_basin, neighbour_basin), min(this_basin, neighbour_basin));
-                }
+            let count = count_basin(&mut basin_map, coord);
+            if count > top_counts[0] {
+                top_counts[0] = count;
+                top_counts.sort();
             }
         }
     }
 
-    struct CountBasinNum(usize, u32);
-    let mut basin_sums = Vec::new();
-
-    // Count basin sizes
-    for b in 1..max_basin + 1 {
-        let mut sum = 0;
-        for r in 0..rows {
-            for c in 0..cols {
-                let coord = Coord(r, c);
-                if basin_map.get(coord) == b {
-                    sum += 1;
-                }
-            }
-        }
-        basin_sums.push(CountBasinNum(sum, b));
-    }
-    basin_sums.sort_by(|a, b| b.0.cmp(&a.0));
-
-    println!("{}", basin_sums[0].0 * basin_sums[1].0 * basin_sums[2].0);
+    println!("{}", top_counts[0] * top_counts[1] * top_counts[2]);
 }
