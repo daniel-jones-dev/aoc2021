@@ -1,82 +1,120 @@
 use std::cmp::{max, min};
 use std::fs;
 
-fn is_low_point(height_map: &Vec<Vec<u32>>, r: usize, c: usize, rows: usize, cols: usize) -> bool {
-    let this_height = height_map[r][c];
-    if r > 0 && height_map[r - 1][c] <= this_height { return false; }
-    if c > 0 && height_map[r][c - 1] <= this_height { return false; }
-    if r + 1 < rows && height_map[r + 1][c] <= this_height { return false; }
-    if c + 1 < cols && height_map[r][c + 1] <= this_height { return false; }
-    return true;
+// #[derive(Clone, Copy)]
+// struct Coord {
+//     row: usize,
+//     col: usize,
+// }
+
+#[derive(Clone, Copy)]
+struct Coord(usize, usize);
+
+struct Map {
+    vals: Vec<Vec<u32>>,
 }
 
-fn first_neighbour_basin(basin_map: &Vec<Vec<u32>>, r: usize, c: usize, rows: usize, cols: usize, ignore: Option<u32>) -> u32 {
-    if r > 0 {
-        let up = basin_map[r - 1][c];
-        if up != 0 && up != ignore.unwrap_or(0) { return up; }
+fn new_map(rows: usize, cols: usize) -> Map {
+    return Map {
+        vals: vec![vec![0; cols]; rows],
+    };
+}
+
+impl Map {
+    fn rows(&self) -> usize { return self.vals.len(); }
+    fn cols(&self) -> usize { return self.vals.first().unwrap().len(); }
+
+    fn get_mut(&mut self, coord: Coord) -> &mut u32 {
+        return self.vals.get_mut(coord.0).unwrap().get_mut(coord.1).unwrap();
     }
-    if c > 0 {
-        let left = basin_map[r][c - 1];
-        if left != 0 && left != ignore.unwrap_or(0) { return left; }
+    fn get(&self, coord: Coord) -> u32 {
+        return *self.vals.get(coord.0).unwrap().get(coord.1).unwrap();
     }
-    if r + 1 < rows {
-        let down = basin_map[r + 1][c];
-        if down != 0 && down != ignore.unwrap_or(0) { return down; }
+    fn neighbours(&self, coord: Coord) -> Vec<Coord> {
+        let mut result = Vec::new();
+        let (r, c) = (coord.0, coord.1);
+        if r > 0 {
+            result.push(Coord(r - 1, c));
+        }
+        if c > 0 {
+            result.push(Coord(r, c - 1));
+        }
+        if r + 1 < self.rows() {
+            result.push(Coord(r + 1, c));
+        }
+        if c + 1 < self.cols() {
+            result.push(Coord(r, c + 1));
+        }
+        return result;
     }
-    if c + 1 > cols {
-        let right = basin_map[r][c + 1];
-        if right != 0 && right != ignore.unwrap_or(0) { return right; }
+}
+
+
+fn is_low_point(height_map: &Map, coord: Coord) -> bool {
+    let this_height = height_map.get(coord);
+    let neighbours = height_map.neighbours(coord);
+    return !neighbours.iter().any(|neighbour| height_map.get(*neighbour) <= this_height);
+}
+
+fn first_neighbour_basin(basin_map: &Map, coord: Coord, ignore: Option<u32>) -> u32 {
+    let neighbours = basin_map.neighbours(coord);
+    for neighbour in neighbours {
+        let neighbour_basin = basin_map.get(neighbour);
+        if neighbour_basin != 0 && neighbour_basin != ignore.unwrap_or(0) { return neighbour_basin; }
     }
     return 0;
 }
 
-fn reassign_basin(basin_map: &mut Vec<Vec<u32>>, from: u32, to: u32, rows: usize, cols: usize) {
-    for r in 0..rows {
-        for c in 0..cols {
-            if basin_map[r][c] == from {
-                basin_map[r][c] = to;
+fn reassign_basin(basin_map: &mut Map, from: u32, to: u32) {
+    for r in 0..basin_map.rows() {
+        for c in 0..basin_map.cols() {
+            let coord = Coord(r, c);
+            if basin_map.get(coord) == from {
+                *basin_map.get_mut(coord) = to;
             }
         }
     }
 }
 
 fn main() {
-    let contents = fs::read_to_string("input.txt").unwrap();
+    let contents = fs::read_to_string("example.txt").unwrap();
 
     let cols = contents.lines().next().unwrap().len();
     let rows = contents.lines().count();
 
-    let mut height_map = vec![vec![0; cols]; rows];
+    let mut height_map = new_map(rows, cols);
 
-    for (row, line) in contents.lines().enumerate() {
-        for (col, char) in line.chars().enumerate() {
-            height_map[row][col] = char.to_digit(10).unwrap();
+    for (r, line) in contents.lines().enumerate() {
+        for (c, char) in line.chars().enumerate() {
+            let coord = Coord(r, c);
+            *height_map.get_mut(coord) = char.to_digit(10).unwrap();
         }
     }
 
     let mut risk_level_sum = 0;
-    let mut basin_map = vec![vec![0; cols]; rows];
+    let mut basin_map = new_map(rows, cols);
     let mut max_basin = 0;
 
     for r in 0..rows {
         for c in 0..cols {
-            let this_height = height_map[r][c];
-            if is_low_point(&height_map, r, c, rows, cols) {
+            let coord = Coord(r, c);
+            let this_height = height_map.get(coord);
+            if is_low_point(&height_map, coord) {
                 let risk_level = this_height + 1;
                 risk_level_sum += risk_level;
             }
 
             // Assign a basin to the cell
             if this_height == 9 {
-                basin_map[r][c] = 0;
+                *basin_map.get_mut(coord) = 0;
             } else {
-                let neighbour_basin = first_neighbour_basin(&basin_map, r, c, rows, cols, None);
+                let neighbour_basin = first_neighbour_basin(&basin_map, coord, None);
                 if neighbour_basin != 0 {
-                    basin_map[r][c] = neighbour_basin;
+                    *basin_map.get_mut(coord) = neighbour_basin;
                 } else {
                     // Assign new basin
                     max_basin += 1;
-                    basin_map[r][c] = max_basin;
+                    *basin_map.get_mut(coord) = max_basin;
                 }
             }
         }
@@ -86,11 +124,12 @@ fn main() {
     // Reassign neighbouring basins
     for r in 0..rows {
         for c in 0..cols {
-            let this_basin = basin_map[r][c];
+            let coord = Coord(r, c);
+            let this_basin = basin_map.get(coord);
             if this_basin != 0 {
-                let neighbour_basin = first_neighbour_basin(&basin_map, r, c, rows, cols, Option::from(this_basin));
+                let neighbour_basin = first_neighbour_basin(&basin_map, coord, Option::from(this_basin));
                 if neighbour_basin != 0 {
-                    reassign_basin(&mut basin_map, max(this_basin, neighbour_basin), min(this_basin, neighbour_basin), rows, cols);
+                    reassign_basin(&mut basin_map, max(this_basin, neighbour_basin), min(this_basin, neighbour_basin));
                 }
             }
         }
@@ -104,7 +143,8 @@ fn main() {
         let mut sum = 0;
         for r in 0..rows {
             for c in 0..cols {
-                if basin_map[r][c] == b {
+                let coord = Coord(r, c);
+                if basin_map.get(coord) == b {
                     sum += 1;
                 }
             }
