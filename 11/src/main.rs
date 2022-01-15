@@ -71,7 +71,7 @@ fn main() {
     println!("Before any steps:");
     print_state(&energies);
     let mut num_flashed = 0;
-    for step in 1..101 {
+    for step in 1..1031 {
         for r in 0..10 {
             for c in 0..10 {
                 let coord = Coord(r, c);
@@ -106,6 +106,11 @@ fn main() {
 
         println!("After step {}:", step);
         print_state(&energies);
+
+        if flashed.len() == 100 {
+            println!("All simultaneous on step {}", step);
+            break;
+        }
     }
 
     println!("{}", num_flashed);
