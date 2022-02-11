@@ -1,7 +1,5 @@
-use std::cmp::{max, min};
-use std::{fmt, fs};
-use std::collections::{HashMap, HashSet};
-use std::hash::Hasher;
+use std::fs;
+use std::collections::HashMap;
 use std::rc::Rc;
 use priority_queue::PriorityQueue;
 
@@ -10,6 +8,8 @@ struct Coord(usize, usize);
 
 struct Grid {
     values: Vec<Vec<i32>>,
+    xs: usize,
+    ys: usize,
 }
 
 fn between(low: usize, val: usize, high: usize) -> bool {
@@ -24,34 +24,36 @@ impl Grid {
         for i in 0..lines.len() {
             values[i] = lines[i].chars().map(|char| char.to_digit(10).unwrap() as i32).collect();
         }
-        Grid { values }
+        let xs = values[0].len();
+        let ys = lines.len();
+        Grid { values, xs, ys }
     }
-
-    fn ys(&self) -> usize { return self.values.len(); }
-
-    fn xs(&self) -> usize { return self.values.first().unwrap().len(); }
 
     fn get(&self, coord: Coord) -> i32 {
         return *self.values.get(coord.1).unwrap().get(coord.0).unwrap();
     }
 
+    fn get_mut(&mut self, coord: Coord) -> &mut i32 {
+        return self.values.get_mut(coord.1).unwrap().get_mut(coord.0).unwrap();
+    }
+
     fn start(&self) -> Coord { Coord(0, 0) }
 
     fn goal(&self) -> Coord {
-        Coord(self.xs() - 1, self.ys() - 1)
+        Coord(self.xs - 1, self.ys - 1)
     }
 
     fn h(&self, coord: Coord) -> i32 {
         return 1 * (
-            (self.ys() - 1 - coord.1) as i32 +
-                (self.xs() - 1 - coord.0) as i32
+            (self.ys - 1 - coord.1) as i32 +
+                (self.xs - 1 - coord.0) as i32
         );
     }
 
     fn neighbours(&self, coord: Coord) -> Vec<Coord> {
         let mut result = Vec::new();
         for (yd, xd) in [(0, 1), (1, 2), (2, 1), (1, 0)] {
-            if !between(1, coord.1 + yd, self.ys()) || !between(1, coord.0 + xd, self.xs()) {
+            if !between(1, coord.1 + yd, self.ys) || !between(1, coord.0 + xd, self.xs) {
                 continue;
             }
             let new_coord = Coord(coord.0 + xd - 1, coord.1 + yd - 1);
@@ -61,15 +63,45 @@ impl Grid {
     }
 
     fn print(&self) {
-        for y in 0..(self.ys()) {
+        for y in 0..(self.ys) {
             println!("{}", self.values[y].iter().fold(
                 String::new(),
-                |mut acc, ele| {
+                |acc, ele| {
                     acc + ele.to_string().as_str()
                 },
             ));
         }
         println!();
+    }
+
+    fn resize(&mut self, x: usize, y: usize) {
+        self.xs = x;
+        self.ys = y;
+
+        self.values.resize(self.xs, Vec::new());
+        for xi in 0..(self.xs) {
+            self.values[xi].resize(self.ys, 0);
+        }
+    }
+
+    fn increase_size_for_part2(&mut self) {
+        let old_xs = self.xs;
+        let old_ys = self.ys;
+        self.resize(self.xs * 5, self.ys * 5);
+
+        for nx in 0..5 {
+            for ny in 0..5 {
+                let c = nx + ny;
+                if nx == 0 && ny == 0 { continue; }
+                let xd = nx * old_xs;
+                let yd = ny * old_ys;
+                for x in 0..old_xs {
+                    for y in 0..old_ys {
+                        *self.get_mut(Coord(x + xd, y + yd)) = (self.get(Coord(x, y)) + c as i32 - 1) % 9 +1;
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -99,7 +131,7 @@ impl Node {
     }
 }
 
-fn is_better_cost(best_node: &Option<Rc<Node>>, g:i32) -> bool {
+fn is_better_cost(best_node: &Option<Rc<Node>>, g: i32) -> bool {
     best_node.is_none() || best_node.as_ref().unwrap().g > g
 }
 
@@ -131,10 +163,7 @@ impl AStar {
     }
 }
 
-fn main() {
-    let grid = Grid::from("input.txt");
-    grid.print();
-
+fn solve(grid: &Grid) {
     let mut best_node = None;
     let mut astar = AStar::new(&grid);
 
@@ -163,4 +192,16 @@ fn main() {
 
     let best_node = best_node.unwrap();
     println!("Best cost: {} with {}", best_node.g, best_node.to_string());
+}
+
+fn main() {
+    let grid = Grid::from("input.txt");
+    grid.print();
+    solve(&grid);
+
+    // Part 2
+    let mut grid = grid;
+    grid.increase_size_for_part2();
+    grid.print();
+    solve(&grid);
 }
