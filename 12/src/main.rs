@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
-use std::fs;
+use std::{fmt, fs};
 
 fn add_link(map: &mut HashMap<String, HashSet<String>>, node1: &str, node2: &str) {
     if !map.contains_key(node1) {
@@ -16,27 +16,39 @@ fn add_both_links(map: &mut HashMap<String, HashSet<String>>, node1: &str, node2
 
 struct PartialPath {
     nodes: Vec<String>,
+    used_double_visit: Option<String>,
 }
 
 impl PartialPath {
     fn initial() -> PartialPath {
         return PartialPath {
-            nodes: [String::from("start")].to_vec()
+            nodes: [String::from("start")].to_vec(),
+            used_double_visit: Option::None,
         };
     }
 
     fn visited(&self, node: &str) -> bool {
-        return self.nodes.iter().any(|n| node.cmp(n) == Ordering::Equal);
+        self.nodes.iter().any(|n| node.cmp(n) == Ordering::Equal)
+    }
+
+    fn visited_pt2(&self, node: &str) -> bool {
+        self.visited(node) && self.used_double_visit.is_some()
     }
 
     fn extend_with(&self, node: &str) -> PartialPath {
+        let node_is_lowercase = node.chars().all(|c| c.is_lowercase());
+        let used_double_visit = if self.used_double_visit.is_some() || (node_is_lowercase && self.visited(node)) {
+            Some(node.to_string())
+        } else { None };
         let mut nodes = self.nodes.clone();
         nodes.push(node.to_string());
-        return PartialPath { nodes };
+        PartialPath { nodes, used_double_visit }
     }
+}
 
-    fn print_path(&self) {
-        println!("{}", self.nodes.join(","));
+impl fmt::Display for PartialPath {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}{}", self.nodes.join(","), if self.used_double_visit.is_some() { " *" } else { "" })
     }
 }
 
@@ -57,14 +69,14 @@ fn main() {
         let last_node = path_to_check.nodes.last().unwrap();
         let possible_next_nodes = &map[last_node];
         for possible_next_node in possible_next_nodes.iter() {
-            if *possible_next_node == "start" { continue; }
-            if possible_next_node.chars().all(|c| c.is_lowercase()) &&
-                path_to_check.visited(possible_next_node) {
+            if *possible_next_node == "start"
+                || (possible_next_node.chars().all(|c| c.is_lowercase()) &&
+                    path_to_check.visited_pt2(possible_next_node)) {
                 continue;
             }
             let new_path = path_to_check.extend_with(possible_next_node);
             if *possible_next_node == "end" {
-                new_path.print_path();
+                println!("{}", new_path);
                 paths_found += 1;
             } else {
                 to_check.push(new_path);
