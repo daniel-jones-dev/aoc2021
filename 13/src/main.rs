@@ -60,20 +60,27 @@ impl DotMatrix {
     }
 }
 
-// impl fmt::Display for DotMatrix {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         write!(f, "{}", self.matrix.jo())
-//     }
-// }
+impl fmt::Display for DotMatrix {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut text = String::new();
+        for yi in 0..(self.ys) {
+            for xi in 0..(self.xs) {
+                text += if self.matrix[xi][yi] {"#"} else {"."};
+            }
+            text += "\n";
+        }
+        write!(f, "{}", text)
+    }
+}
 
 fn main() {
     let mut matrix = DotMatrix::new();
-
+    let mut part_one_done = false;
     let mut folds_mode = false;
     for line in fs::read_to_string("input.txt").unwrap().lines() {
         if line.len() == 0 {
             folds_mode = true;
-        } else if folds_mode == false {
+        } else if !folds_mode {
             let vec: Vec<&str> = line.splitn(2, ",").collect();
             let (x, y) = (vec[0].parse::<usize>().unwrap(), vec[1].parse::<usize>().unwrap());
             matrix.add(x, y);
@@ -85,10 +92,12 @@ fn main() {
             } else if line.starts_with("fold along y=") {
                 matrix.fold_y(num);
             }
-            println!("{}", matrix.count());
-            break;
+            if !part_one_done {
+                println!("{}", matrix.count());
+                part_one_done = true;
+            }
         }
     }
 
-    // println!("{}", matrix.count());
+    println!("{}", matrix);
 }
