@@ -16,14 +16,14 @@ fn add_both_links(map: &mut HashMap<String, HashSet<String>>, node1: &str, node2
 
 struct PartialPath {
     nodes: Vec<String>,
-    used_double_visit: Option<String>,
+    used_double_visit: bool,
 }
 
 impl PartialPath {
     fn initial() -> PartialPath {
         return PartialPath {
             nodes: [String::from("start")].to_vec(),
-            used_double_visit: Option::None,
+            used_double_visit: false,
         };
     }
 
@@ -32,14 +32,12 @@ impl PartialPath {
     }
 
     fn visited_pt2(&self, node: &str) -> bool {
-        self.visited(node) && self.used_double_visit.is_some()
+        self.used_double_visit && self.visited(node)
     }
 
     fn extend_with(&self, node: &str) -> PartialPath {
         let node_is_lowercase = node.chars().all(|c| c.is_lowercase());
-        let used_double_visit = if self.used_double_visit.is_some() || (node_is_lowercase && self.visited(node)) {
-            Some(node.to_string())
-        } else { None };
+        let used_double_visit = self.used_double_visit || (node_is_lowercase && self.visited(node));
         let mut nodes = self.nodes.clone();
         nodes.push(node.to_string());
         PartialPath { nodes, used_double_visit }
@@ -48,7 +46,7 @@ impl PartialPath {
 
 impl fmt::Display for PartialPath {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}{}", self.nodes.join(","), if self.used_double_visit.is_some() { " *" } else { "" })
+        write!(f, "{}{}", self.nodes.join(","), if self.used_double_visit { " *" } else { "" })
     }
 }
 
