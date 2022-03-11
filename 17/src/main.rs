@@ -1,5 +1,4 @@
-use std::cmp::{max, min};
-use std::fs;
+use std::cmp::max;
 
 extern crate regex;
 
@@ -74,9 +73,7 @@ impl Target {
 fn calc_probe_result(vx: i32, vy: i32, target: &Target) -> ProbeResult {
     let mut probe = Probe::new(vx, vy);
     let mut max_y = 0;
-    let mut step = 0;
     loop {
-        step += 1;
         probe.step();
         max_y = max(max_y, probe.y);
         if target.contains_probe(&probe) {
@@ -87,29 +84,58 @@ fn calc_probe_result(vx: i32, vy: i32, target: &Target) -> ProbeResult {
             _ => ()
         }
     }
-
 }
 
 fn main() {
     let input = "target area: x=240..292, y=-90..-57";
-    let example1 = "target area: x=20..30, y=-10..-5";
+    let _example1 = "target area: x=20..30, y=-10..-5";
 
     let target = Target::new(input);
     target.print();
 
-    let best_vx_min = f32::floor(f32::sqrt(2.0*target.x_min as f32))as i32;
-    let best_vx_max = f32::ceil(f32::sqrt(2.0*target.x_max as f32)) as i32;
+    // To maximize our vertical height, we want to maximize the number of steps. This means we
+    // should aim to have vx=0 when we cross the target. The change in x-distance to the target
+    // over the trajectory are triangular numbers (e.g. 15, 10, 6, 3, 2, 1) so by inverting the
+    // triangular formula, we can get a range of starting vx values that lead to us
+    // having vx=0 within the target.
+    let best_vx_min = f32::floor(f32::sqrt(2.0 * target.x_min as f32)) as i32;
+    let best_vx_max = f32::ceil(f32::sqrt(2.0 * target.x_max as f32)) as i32;
 
     let mut best_result = 0;
 
-    for vx in best_vx_min..best_vx_max+1 {
-        for vy in 0..(-target.y_min) {
+    for vx in best_vx_min..best_vx_max + 1 {
+        // Our vy trajectory is symmetrical, so we will have a later step where y=0. If our vy is
+        // larger than the target is below 0, we'll miss it entirely, so its our upper bound.
+        // Our lower bound could be improved, but it works well enough.
+        for vy in 0..-target.y_min + 1 {
             match calc_probe_result(vx, vy, &target) {
-                ProbeResult::Hit {max_y} => best_result = max(best_result, max_y),
+                ProbeResult::Hit { max_y } => best_result = max(best_result, max_y),
                 _ => ()
             }
         }
     }
+    println!("Part 1: {}", best_result);
 
-    println!("Best result: {}", best_result);
+    // Our vx lower bound is our triangular number lower bound from above -- if we don't have at
+    // least this speed, we'll never reach the target.
+    // Our vx upper bound is the right edge of the target -- higher than this and we will miss the
+    // target entirely.
+
+    // Our vy lower bound is the bottom of the target, which we can achieve in a single step by
+    // aiming directly at the target.
+    // Our vy upper bound is the negative of the bottom of the target, same as above, because beyond
+    // this we will skip the target in a single step following the second y=0 step.
+    let mut solution_count = 0;
+    for vx in best_vx_min..target.x_max + 1 {
+        for vy in target.y_min..-target.y_min + 1 {
+            match calc_probe_result(vx, vy, &target) {
+                ProbeResult::Hit { max_y } => {
+                    solution_count += 1;
+                    println!("{},{}", vx, vy);
+                }
+                _ => ()
+            }
+        }
+    }
+    println!("Part 2: {}", solution_count);
 }
