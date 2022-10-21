@@ -1,3 +1,4 @@
+use std::cmp::max;
 use std::collections::HashMap;
 use std::fs;
 
@@ -175,4 +176,21 @@ fn main() {
     sum.reduce();
     // println!("Reduced: {}", sum);
     println!("Magnitude: {}", sum.magnitude());
+
+    // Part 2
+    let mut highest_magnitude = 0;
+
+    let n = numbers.len();
+    for i in 0..n {
+        for j in 0..n {
+            if i == j { continue; }
+
+            let mut num = SnailfishNumber::add(&numbers[i], &numbers[j]);
+            num.reduce();
+            let magnitude = num.magnitude();
+            highest_magnitude = max(highest_magnitude, magnitude);
+        }
+    }
+
+    println!("Highest magnitude: {}", highest_magnitude);
 }
